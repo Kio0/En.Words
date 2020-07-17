@@ -11,11 +11,7 @@ def avtoriz():
     if s!='Вход выполнен':
         messagebox.showinfo("Error", s)
     else:
-
-        account=Tk()
-        account.title("Профиль игрока "+Str)
-        account.geometry("500x400")
-        account.mainloop()
+        messagebox.showinfo("Вход выполнен", "Позравляю, вы вошли!")
         
 def reg():
     if functions.test_email(email.get())=='Валидный email':
@@ -25,8 +21,8 @@ def reg():
         messagebox.showinfo("Error", functions.test_email(email.get()))
 
 root = Tk()
-root.title("Войдите в аккаунт")
-root.geometry("500x400")
+root.title("Войдите в аккаунт либо зарегестрируйтесь")
+root.geometry("500x300")
 name = StringVar()
 name2 = StringVar()
 password  = StringVar()
