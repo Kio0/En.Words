@@ -5,8 +5,7 @@ type en_word=record
  ru:string;
  en:string;
  status: string; //последовательность нулей и едениц. 0 - верно. 1 - неверно ответил. 
- kat: integer; //текущая категория слова
- date: string; //дата, когда в последний раз это слово спрашивалось
+ kol: string; //количество ответов, данных с последнего раза, когда спрашивалось это слово.
 end;
 type button=record
   name: string;
@@ -22,8 +21,11 @@ var P: array[1..100] of button;
 var kol: integer;
 var login: string;
 var Regim: string; 
-
-
+var kol_exp: array[1..51] of integer;
+var exp: integer; //текущее количество опыта
+var exp_pic: picture;
+var pos_exp: integer; //последнее количество опыта
+var exp_full,exp_nill: picture;
 type words=record
   kol: integer;
   w:array[1..10000] of en_word;
@@ -41,6 +43,43 @@ type Question=record
   id: integer; 
 end;
 var a: array[1..4] of array[1..2] of Question;
+
+Function GetExp(): picture; //возвращает текущее изображение шкалы оптыта
+var i,r,Sum,lv,gran: integer;
+var P: picture;
+begin
+  Sum:=exp;
+  for i:=1 to 30 do if Sum>kol_exp[i] then begin
+  Sum:=Sum-kol_exp[i];
+  end else if Lv=0 then Lv:=i;
+
+ 
+  if pos_exp=exp then GetExp:=exp_pic else begin
+  Sum:=exp;
+  for i:=1 to 30 do if Sum>kol_exp[i] then begin
+  Sum:=Sum-kol_exp[i];
+  end else if Lv=0 then Lv:=i;
+//Lv - текущий уровнь
+//Sum - остаток опыта
+//kol_exp[Lv+1] - требуется опыта
+gran:=Round((exp_full.Width-47*2)*(Sum/kol_exp[Lv+1])+47);
+P:=new Picture(exp_full.Width,exp_full.Height);
+for i:=0 to exp_full.Width-1 do 
+  for r:=0 to exp_full.Height-1 do begin
+    if i<gran then P.SetPixel(i,r,exp_full.GetPixel(i,r)) else P.SetPixel(i,r,exp_nill.GetPixel(i,r));
+    
+    end;
+    P.TextOut(P.Height div 2,P.Width div 2,Sum+' / '+kol_exp[Lv+1]);
+    P.transpcolor:=P.GetPixel(1,1);
+    P.Transparent:=true;
+    pos_exp:=exp;
+    exp_pic:=P;
+    GetExp:=P;
+  end;
+  
+  
+end;
+
 Procedure Dob(name,R,url: string; x,y: integer);  //добавляет новую кнопку с текстурой name видной в режиме R с url по клику и координатой x,y
 var b: boolean;
 var i: integer;
@@ -252,6 +291,7 @@ if P[i].onn then for r:=1 to 5 do begin
 
 end;
 
+if Regim='home' then GetExp.Draw(70,20);
 
 textout(10,10,Regim);
   redraw();
@@ -296,6 +336,59 @@ end;
 Procedure Start();
 var i,r,x1,x2,y,dx,a,b: integer;
 begin
+  kol_exp[1]:=1;
+  kol_exp[2]:=10;
+  kol_exp[3]:=10;
+  kol_exp[4]:=15;
+  kol_exp[5]:=20;
+  kol_exp[6]:=20;
+  kol_exp[7]:=30;
+  kol_exp[8]:=50;
+  kol_exp[9]:=60;
+  kol_exp[10]:=70;
+  kol_exp[11]:=80;
+  kol_exp[12]:=90;
+  kol_exp[13]:=100;
+  kol_exp[14]:=120;
+  kol_exp[15]:=140;
+  kol_exp[16]:=160;
+  kol_exp[17]:=180;
+  kol_exp[18]:=200;
+  kol_exp[19]:=230;
+  kol_exp[20]:=260;
+  kol_exp[21]:=300;
+  kol_exp[22]:=350;
+  kol_exp[23]:=400;
+  kol_exp[24]:=475;
+  kol_exp[25]:=550;
+  kol_exp[26]:=675;
+  kol_exp[27]:=750;
+  kol_exp[28]:=900;
+  kol_exp[29]:=1100;
+  kol_exp[30]:=1300;
+  kol_exp[31]:=1500;
+  kol_exp[32]:=1750;
+  kol_exp[33]:=2000;
+  kol_exp[34]:=2500;
+  kol_exp[35]:=3000;
+  kol_exp[36]:=3500;
+  kol_exp[37]:=4000;
+  kol_exp[38]:=4500;
+  kol_exp[39]:=5000;
+  kol_exp[40]:=6000;
+  kol_exp[41]:=7000;
+  kol_exp[42]:=8000;
+  kol_exp[43]:=9000;
+  kol_exp[44]:=10000;
+  kol_exp[45]:=12500;
+  kol_exp[46]:=15000;
+  kol_exp[47]:=17500;
+  kol_exp[48]:=20000;
+  kol_exp[49]:=22500;
+  kol_exp[50]:=25000;
+  exp_full:=new picture('image/progressbar.png');
+  exp_nill:=new picture('image/progressbar2.png');
+  exp:=1;
   setfontcolor(clWhite);
   SetFontStyle(fsBold);
   lockdrawing();
@@ -311,7 +404,7 @@ begin
   setpenStyle(psClear);
   Regim:='home';
   setbrushstyle(bsclear);
-
+  
 //Основное окно
    Dob('fon','home','',0,0); //фон
    Dob('settings','home','settings',fon.Width-120,50,true); //кнопка настроек
@@ -329,7 +422,15 @@ begin
 //квесты
    Dob('fon','Достижения','',0,0,false); //фон
    Dob('Квесты','Достижения','',135,50,false); //соты квестов
-   
+ 
+//словарь
+  Dob('Неизвестные слова','Словарь','Неизвестные слова',(fon.Width-390*3) div 4,170,true); //кнопка выхода 
+  Dob('Изучаемые слова','Словарь','Изучаемые слова',(fon.Width-390*3) div 2+390,170,true); //кнопка выхода   
+  Dob('Выученные слова','Словарь','Выученные слова',((fon.Width-390*3) div 4)*3+390*2,170,true); //кнопка выхода
+  Dob('Поиск','Словарь','Поиск',(fon.Width-390*3) div 4,470,true); //кнопка выхода 
+  Dob('Темы','Словарь','Темы',(fon.Width-390*3) div 2+390,470,true); //кнопка выхода   
+  Dob('Добавить','Словарь','Добавить',((fon.Width-390*3) div 4)*3+390*2,470,true); //кнопка выхода
+
    
  Dob('exit','settings','home',fon.Width-120,50,true); //кнопка выхода
 Dob('exit','Словарь','home',fon.Width-120,50,true); //кнопка выхода
@@ -337,8 +438,12 @@ Dob('exit','Учить','home',fon.Width-120,50,true); //кнопка выход
 Dob('exit','Повторять','home',fon.Width-120,50,true); //кнопка выхода
 Dob('exit','Тест','home',fon.Width-120,50,true); //кнопка выхода
 Dob('exit','Достижения','home',fon.Width-120,50,true); //кнопка выхода
-
-
+Dob('exit','Неизвестные слова','Словарь',fon.Width-120,50,true); //кнопка выхода
+Dob('exit','Изучаемые слова','Словарь',fon.Width-120,50,true); //кнопка выхода
+Dob('exit','Выученные слова','Словарь',fon.Width-120,50,true); //кнопка выхода
+Dob('exit','Поиск','Словарь',fon.Width-120,50,true); //кнопка выхода
+Dob('exit','Темы','Словарь',fon.Width-120,50,true); //кнопка выхода
+Dob('exit','Добавить','Словарь',fon.Width-120,50,true); //кнопка выхода
   Ris();
 end;
 
