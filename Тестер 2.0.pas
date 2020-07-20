@@ -5,7 +5,7 @@ type en_word=record
  ru:string;
  en:string;
  status: string; //последовательность нулей и едениц. 0 - верно. 1 - неверно ответил. 
- kol: string; //количество ответов, данных с последнего раза, когда спрашивалось это слово.
+ kol: integer; //количество ответов, данных с последнего раза, когда спрашивалось это слово.
 end;
 type button=record
   name: string;
@@ -17,6 +17,15 @@ type button=record
   url: string; 
   x,y: integer; 
 end;
+type words=record
+    kol: integer;
+  w:array[1..10000] of en_word;
+end;
+type anim=record
+  kol:integer;
+  P:array[1..30] of Picture;
+  sleep: integer;
+end;
 var P: array[1..100] of button;
 var kol: integer;
 var login: string;
@@ -26,14 +35,14 @@ var exp: integer; //текущее количество опыта
 var exp_pic: picture;
 var pos_exp: integer; //последнее количество опыта
 var exp_full,exp_nill: picture;
-type words=record
-  kol: integer;
-  w:array[1..10000] of en_word;
-end;
+var card: anim;
+var GoAnim: boolean; //что бы клики по экрану не работали во время анимации
 var Kard: array[1..6] of picture;
 var fon: picture;
-var W:array[1..17] of words; //17 периодов повторения. 
-//Час, Два часа, 12 часов, Сутки, Два дня, Неделя, Две недели. При верном ответе два раза подряд слово переходит в следующую категорию. При ошибке попадает в первую.
+var W: words; //изучаемые слова
+var TrW: words; //изученные слова
+var FaW: words; //неизвестные слова
+var StrW,StrTW,StrFW: integer; //текущая страница в словаре
 var kategory:array[1..17] of integer; //время между вопросами в минутах
 
 const limit=50; //максимальное количестков изучаемых слов (в первых 5 категориях суммарно)
@@ -184,57 +193,10 @@ if pos('++',s)=0 then r:=length(s);
 e.ru:=copy(s,pos('--',s)+2,r);
 e.status:=copy(s,pos('++',s)+2,pos('@@',s)-pos('++',s)-2);
 kat:=copy(s,pos('@@',s)+2,length(s));
-e.kat:=intStr(kat);
-if e.kat=0 then e.kat:=1;
+e.kol:=intStr(kat);
+if e.kol=0 then e.kol:=1;
 ReadStr:=e;
 end;
-Procedure Start1(); //считывает данные
-var i,r,g: integer;
-var t: text;
-var str: string;
-begin
-  lockdrawing();
-  kategory[1]:=1;
-  kategory[2]:=5;
-  kategory[3]:=10;
-  kategory[4]:=60;
-  kategory[5]:=60;
-  kategory[6]:=120;
-  kategory[7]:=120;
-  kategory[8]:=720;
-  kategory[9]:=720;
-  kategory[10]:=1440;
-  kategory[11]:=1440;
-  kategory[12]:=2880;
-  kategory[13]:=2880;
-  kategory[14]:=10080;
-  kategory[15]:=10080;
-  kategory[16]:=20160;
-  kategory[17]:=20160;
-  for i:=1 to 17 do begin 
-    assign(t,'word '+i+'.txt');
-    reset(t);
-    while not(eof(t)) do begin
-      readln(t,str);
-      W[i].kol:=W[i].kol+1;
-      W[i].w[W[i].kol]:=ReadStr(str);
-      
-      
-      
-    end;
-    close(t)
-  end;
-  
- fon:=new Picture('image/fon.jpg'); 
- for i:=1 to 6 do Kard[i]:=new Picture('image/'+i+'.jpg');
-  
-  setwindowpos(100,50);
-  setwindowtitle('Тестер английского');
-  setwindowsize(fon.Width,fon.Height);
-  
-  
-end;
-
 
 
 Procedure Save(); //сохраняет слова в файлы
@@ -242,23 +204,35 @@ var i,r: integer;
 var wor: en_word;
 var t: text;
 begin
-writeln(W[1].w[52]);
-for i:=1 to 17 do begin
-  assign(t,'word '+i+'.txt');
+
+  assign(t,'word.txt');
   rewrite(t);
-  for r:=1 to W[i].kol do begin
-  wor:=W[i].w[r];
-  write(t,wor.en+'--'+wor.ru+'++'+wor.status+'@@'+wor.kat);
-  if r<W[i].kol then writeln(t,'');
+  for r:=1 to W.kol do begin
+  wor:=W.w[r];
+  write(t,wor.en+'--'+wor.ru+'++'+wor.status+'@@'+wor.kol);
+  if r<W.kol then writeln(t,'');
   end;
   
   close(t);
   
-  end;
-  
 end;
 
-
+Procedure RisAnim(A:anim; x,y: integer);
+var i,r: integer;
+var P: picture;
+begin
+SaveWindow('image/backap.bmp');
+P:=new Picture('image/backap.bmp');
+GoAnim:=true;
+for i:=1 to A.kol do begin
+//LoadWindow('image/backap.bmp'); 
+P.Draw(0,0);
+A.P[i].Draw(x,y);
+redraw();
+sleep(A.sleep);
+end;  
+  GoAnim:=false;
+end;
 Procedure Ris();
 var i,r: integer;
 var CB: picture;
@@ -292,8 +266,57 @@ if P[i].onn then for r:=1 to 5 do begin
 end;
 
 if Regim='home' then GetExp.Draw(70,20);
+if (Regim=('Неизвестные слова')) or (Regim=('Изучаемые слова')) or (Regim=('Выученные слова')) then begin
+  setpencolor(clGreen); 
+  setbrushcolor(RGB(128,34,240));
+  for r:=0 to 10 do line(70,120+r*((fon.Height-200) div 11),fon.Width-70,120+r*((fon.Height-200) div 11));
+  line(70,120,70,120+r*((fon.Height-200) div 11));
+  line(120,120,120,120+r*((fon.Height-200) div 11));
+  line(460,120,460,120+r*((fon.Height-200) div 11));
+  line(900,120,900,120+r*((fon.Height-200) div 11));
+  line(fon.Width-70,120,fon.Width-70,120+r*((fon.Height-200) div 11));
+  if StrW<1 then StrW:=1;
+  if StrW>((W.kol-1) div 10)+1 then StrW:=((W.kol-1) div 10)+1;
+  if StrTW<1 then StrTW:=1;
+  if StrTW>((TrW.kol-1) div 10)+1 then StrTW:=((TrW.kol-1) div 10)+1;
+  if StrFW<1 then StrFW:=1;
+  if StrFW>((FaW.kol-1) div 10)+1 then StrFW:=((FaW.kol-1) div 10)+1;
+//выводим слова в таблицу  
+if (Regim=('Неизвестные слова')) then begin
+SetFontColor(clRed);
+  for r:=StrFW*10-9 to StrFW*10 do begin
+    SetFontSize(20);
+    DrawTextCentered(95,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),r);
+    DrawTextCentered(290,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),FaW.w[r].en);
+    SetFontSize(15);
+    DrawTextCentered(680,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),FaW.w[r].ru);
+  end;
+end;
+if (Regim=('Изучаемые слова')) then begin
+SetFontColor(clBlue);
+  for r:=StrW*10-9 to StrW*10 do begin
+    SetFontSize(20);
+    DrawTextCentered(95,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),r);
+    DrawTextCentered(290,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),W.w[r].en);
+    SetFontSize(15);
+    DrawTextCentered(680,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),W.w[r].ru);
+  end;
+end;
+if (Regim=('Выученные слова')) then begin
+SetFontColor(clGreen);
+  for r:=StrTW*10-9 to StrTW*10 do begin
+    SetFontSize(20);
+    DrawTextCentered(95,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),r);
+    DrawTextCentered(290,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),TrW.w[r].en);
+    SetFontSize(15);
+    DrawTextCentered(680,(120+(((r-1) mod 10)+1)*((fon.Height-200) div 11)-20),TrW.w[r].ru);
+  end;
+end;
+
+end;
 
 textout(10,10,Regim);
+
   redraw();
 end;
 Procedure MouseKey(x,y,mb: integer);
@@ -305,11 +328,16 @@ begin
   if s<>'nill' then begin
 
   case s of
-  'home_set': regim:='home';
-  '': regim:='home';
+  'W-': StrW:=StrW-1;
+  'W+': StrW:=StrW+1;
+  'WT-': StrTW:=StrTW-1;
+  'WT+': StrTW:=StrTW+1;
+  'WF-': StrFW:=StrFW-1;
+  'WF+': StrFW:=StrFW+1;
   else Regim:=s;
-  Ris();
+  
   end;
+  Ris();
 end;
 end;
 begin
@@ -334,8 +362,40 @@ end;
 
 
 Procedure Start();
+var t: text;
+var str: string;
 var i,r,x1,x2,y,dx,a,b: integer;
 begin
+  //считываем анимацию карт
+  for i:=1 to 22 do card.P[i]:=new Picture('image\card\'+i+'.png');
+  for i:=1 to 22 do card.P[i].Transparent:=true;
+  card.kol:=22;
+  card.sleep:=20;
+  //считываем словарь
+    assign(t,'word.txt');
+    reset(t);
+    while not(eof(t)) do begin
+      readln(t,str);
+      W.kol:=W.kol+1;
+      W.w[W.kol]:=ReadStr(str);
+    end;
+    assign(t,'true_word.txt');
+    reset(t);
+    while not(eof(t)) do begin
+      readln(t,str);
+      TrW.kol:=TrW.kol+1;
+      TrW.w[TrW.kol]:=ReadStr(str);
+    end;
+    close(t);
+       assign(t,'false_word.txt');
+    reset(t);
+    while not(eof(t)) do begin
+      readln(t,str);
+      FaW.kol:=FaW.kol+1;
+      FaW.w[FaW.kol]:=ReadStr(str);
+    end;
+    close(t);
+    //количество опыта для уровней
   kol_exp[1]:=1;
   kol_exp[2]:=10;
   kol_exp[3]:=10;
@@ -386,6 +446,7 @@ begin
   kol_exp[48]:=20000;
   kol_exp[49]:=22500;
   kol_exp[50]:=25000;
+  fon:=new Picture('image/fon.jpg');
   exp_full:=new picture('image/progressbar.png');
   exp_nill:=new picture('image/progressbar2.png');
   exp:=1;
@@ -393,7 +454,6 @@ begin
   SetFontStyle(fsBold);
   lockdrawing();
   OnMouseDown:=MouseKey;
-  OnMouseMove:=MouseMove;
   OnResize:=Ris;
   SetWindowSize(1188,678);
   SetWindowIsFixedSize(true);
@@ -404,7 +464,7 @@ begin
   setpenStyle(psClear);
   Regim:='home';
   setbrushstyle(bsclear);
-  
+
 //Основное окно
    Dob('fon','home','',0,0); //фон
    Dob('settings','home','settings',fon.Width-120,50,true); //кнопка настроек
@@ -431,7 +491,24 @@ begin
   Dob('Темы','Словарь','Темы',(fon.Width-390*3) div 2+390,470,true); //кнопка выхода   
   Dob('Добавить','Словарь','Добавить',((fon.Width-390*3) div 4)*3+390*2,470,true); //кнопка выхода
 
-   
+Dob('fon_Словарь','Неизвестные слова','',0,0,false); //фон
+Dob('fon_Словарь','Изучаемые слова','',0,0,false); //фон
+Dob('fon_Словарь','Выученные слова','',0,0,false); //фон
+
+Dob('r','Неизвестные слова','WF+',920,540,false); //кнопки переключения страниц в словаре
+Dob('r','Изучаемые слова','W+',920,540,false); //кнопки переключения страниц в словаре
+Dob('r','Выученные слова','WT+',920,540,false); //кнопки переключения страниц в словаре
+
+Dob('l','Неизвестные слова','WF-',600,540,false); //кнопки переключения страниц в словаре
+Dob('l','Изучаемые слова','W-',600,540,false); //кнопки переключения страниц в словаре
+Dob('l','Выученные слова','WT-',600,540,false); //кнопки переключения страниц в словаре
+
+Dob('n','Неизвестные слова','',800,550,false); //номер страницы
+Dob('n','Изучаемые слова','',800,550,false); //номер страницы
+Dob('n','Выученные слова','',800,550,false); //номер страницы
+
+//кнопки выхода
+
  Dob('exit','settings','home',fon.Width-120,50,true); //кнопка выхода
 Dob('exit','Словарь','home',fon.Width-120,50,true); //кнопка выхода
 Dob('exit','Учить','home',fon.Width-120,50,true); //кнопка выхода
@@ -451,10 +528,12 @@ end;
 
 
 begin
-   Start1();
+
   Start();
-  //Save();
-  Ris();
   
+  Ris();
+
+  RisAnim(card,100,100);
+  OnMouseMove:=MouseMove;
   
 end.
